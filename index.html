@@ -156,7 +156,6 @@
     <div class="panel">
       <div class="row">
         <button class="btn" id="saveBtn">Save</button>
-        <button class="btn" id="resetBtn">Reset</button>
       </div>
     </div>
   </div>
@@ -439,12 +438,6 @@ function load() {
   } catch {}
 }
 $('saveBtn').onclick = () => save(false);
-$('resetBtn').onclick = () => {
-  if (confirm('Reset all progress? This cannot be undone.')) {
-    state = freshState(); try { localStorage.removeItem(SAVE_KEY); } catch {}
-    lastUpgradeKey = ''; renderShop(); renderUpgrades(); toast('Progress reset');
-  }
-};
 
 // ---- Loop ----
 load();
