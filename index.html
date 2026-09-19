@@ -95,12 +95,6 @@
   .item.bought { opacity: .6; cursor: default; }
   .item.bought .cost { color: var(--good); }
 
-  .row { display: flex; gap: 8px; }
-  .btn {
-    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--line);
-    background: var(--panel-2); color: var(--text); cursor: pointer; font: inherit;
-  }
-  .btn:hover { border-color: var(--accent); }
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
     background: var(--panel); border: 1px solid var(--accent); padding: 10px 16px; border-radius: 8px;
@@ -152,11 +146,6 @@
       <div class="tab-body" id="pane-buildings"><div id="shop"></div></div>
       <div class="tab-body" id="pane-upgrades" hidden><div id="upgrades"></div></div>
       <div class="tab-body" id="pane-owned" hidden><div id="ownedList"></div></div>
-    </div>
-    <div class="panel">
-      <div class="row">
-        <button class="btn" id="saveBtn">Save</button>
-      </div>
     </div>
   </div>
 </div>
@@ -421,9 +410,8 @@ function toast(msg) {
 }
 
 // ---- Save / load ----
-function save(quiet) {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, savedAt: Date.now() })); if (!quiet) toast('Game saved'); }
-  catch { if (!quiet) toast('Saving is unavailable in this browser'); }
+function save() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, savedAt: Date.now() })); } catch {}
 }
 function load() {
   try {
@@ -437,7 +425,6 @@ function load() {
     if (earned >= 1) { gain(earned); setTimeout(() => toast(`While you were away: +${fmt(earned)} beans`), 300); }
   } catch {}
 }
-$('saveBtn').onclick = () => save(false);
 
 // ---- Loop ----
 load();
@@ -452,8 +439,8 @@ function tick(now) {
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
-setInterval(() => save(true), 10000);
-addEventListener('beforeunload', () => save(true));
+setInterval(() => save(), 10000);
+addEventListener('beforeunload', () => save());
 setTimeout(spawnGolden, (30000 + Math.random() * 60000) / product('goldenRate'));
 </script>
 </body>
