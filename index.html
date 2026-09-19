@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bean Clicker</title>
+<style>
+  :root {
+    --bg: #1d1410;
+    --panel: #2a1d17;
+    --panel-2: #36261e;
+    --line: #4a3529;
+    --text: #f3e6d8;
+    --muted: #b49a86;
+    --accent: #e8a857;
+    --good: #8fce7a;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(circle at 30% 20%, #2b1c14, var(--bg) 60%);
+    color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+    user-select: none;
+  }
+  .wrap {
+    max-width: 1000px; margin: 0 auto; padding: 24px 16px;
+    display: grid; grid-template-columns: 1fr 360px; gap: 24px;
+  }
+  @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } }
+
+  .main { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: .02em; }
+  .count { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .rate { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .bean-area { position: relative; width: 260px; height: 260px; margin: 16px 0; }
+  #bean {
+    width: 100%; height: 100%; border: 0; padding: 0; cursor: pointer;
+    background: none; transition: transform .06s ease;
+  }
+  #bean:hover { transform: scale(1.04); }
+  #bean:active { transform: scale(.94); }
+  #bean:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
+  .pop {
+    position: absolute; pointer-events: none; font-weight: 800; color: var(--accent);
+    animation: rise .9s ease-out forwards; font-size: 20px;
+  }
+  @keyframes rise { to { transform: translateY(-70px); opacity: 0; } }
+
+  .stats { display: flex; gap: 16px; color: var(--muted); font-size: 13px; flex-wrap: wrap; justify-content: center; }
+  .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .golden {
+    position: fixed; width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, #fff3b0, #f2c230 55%, #b8860b);
+    box-shadow: 0 0 24px #f2c230; animation: pulse 1s ease-in-out infinite alternate;
+  }
+  @keyframes pulse { to { transform: scale(1.15); } }
+
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+
+  .item {
+    width: 100%; display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center;
+    padding: 8px 10px; margin-bottom: 6px; border-radius: 8px; border: 1px solid transparent;
+    background: var(--panel-2); color: var(--text); text-align: left; cursor: pointer; font: inherit;
+  }
+  .item:hover:not(:disabled) { border-color: var(--accent); }
+  .item:focus-visible { outline: 2px solid var(--accent); }
+  .item:disabled { opacity: .45; cursor: not-allowed; }
+  .item .icon { font-size: 24px; text-align: center; }
+  .item .name { font-weight: 600; }
+  .item .desc { font-size: 12px; color: var(--muted); }
+  .item .cost { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 700; }
+  .item .owned { font-size: 20px; font-weight: 800; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 2px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .tab {
+    flex: 1; padding: 8px 6px; background: none; border: 0; border-bottom: 2px solid transparent;
+    color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); }
+  .badge {
+    display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px;
+    background: var(--accent); color: var(--bg); font-size: 11px; line-height: 18px; text-align: center;
+  }
+  .tab-body { max-height: 70vh; overflow-y: auto; padding-right: 2px; }
+  .item.bought { opacity: .6; cursor: default; }
+  .item.bought .cost { color: var(--good); }
+
+  .row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--text); cursor: pointer; font: inherit;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--accent); padding: 10px 16px; border-radius: 8px;
+    transition: opacity .3s; opacity: 0; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pop, .golden { animation: none; }
+    #bean { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="main">
+    <h1>☕ Bean Clicker</h1>
+    <div class="count" id="count">0 beans</div>
+    <div class="rate" id="rate">0 per second</div>
+    <div class="bean-area" id="beanArea">
+      <button id="bean" aria-label="Click the coffee bean">
+        <svg viewBox="0 0 200 200" width="100%" height="100%">
+          <defs>
+            <radialGradient id="g" cx="35%" cy="30%" r="75%">
+              <stop offset="0" stop-color="#a86b3c"/>
+              <stop offset=".6" stop-color="#6b3d1f"/>
+              <stop offset="1" stop-color="#3a1f0e"/>
+            </radialGradient>
+          </defs>
+          <ellipse cx="100" cy="100" rx="72" ry="92" transform="rotate(-25 100 100)" fill="url(#g)"/>
+          <path d="M70 30 C 120 70, 80 130, 130 170" stroke="#2a150a" stroke-width="10" fill="none" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="stats">
+      <span>Per click: <b id="perClick">1</b></span>
+      <span>Total clicks: <b id="clicks">0</b></span>
+      <span>All-time beans: <b id="allTime">0</b></span>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tab-buildings" data-tab="buildings" aria-selected="true">Buildings<span class="badge" id="badge-buildings" hidden></span></button>
+        <button class="tab" role="tab" id="tab-upgrades" data-tab="upgrades" aria-selected="false">Upgrades<span class="badge" id="badge-upgrades" hidden></span></button>
+        <button class="tab" role="tab" id="tab-owned" data-tab="owned" aria-selected="false">Owned</button>
+      </div>
+      <div class="tab-body" id="pane-buildings"><div id="shop"></div></div>
+      <div class="tab-body" id="pane-upgrades" hidden><div id="upgrades"></div></div>
+      <div class="tab-body" id="pane-owned" hidden><div id="ownedList"></div></div>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <button class="btn" id="saveBtn">Save</button>
+        <button class="btn" id="resetBtn">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BUILDINGS = [
+  { id: 'barista',   name: 'Barista',        icon: '🧑‍🍳', base: 15,       bps: 0.1,   desc: 'Hand-picks beans.' },
+  { id: 'grinder',   name: 'Grinder',        icon: '⚙️',  base: 100,      bps: 1,     desc: 'Grinds away all day.' },
+  { id: 'espresso',  name: 'Espresso Machine', icon: '☕', base: 1100,     bps: 8,     desc: 'High pressure, high output.' },
+  { id: 'cafe',      name: 'Café',           icon: '🏪', base: 12000,    bps: 47,    desc: 'A whole shop of beans.' },
+  { id: 'roastery',  name: 'Roastery',       icon: '🔥', base: 130000,   bps: 260,   desc: 'Roasts by the ton.' },
+  { id: 'farm',      name: 'Plantation',     icon: '🌱', base: 1400000,  bps: 1400,  desc: 'Grows beans at the source.' },
+  { id: 'ship',      name: 'Cargo Ship',     icon: '🚢', base: 20000000, bps: 7800,  desc: 'Imports beans worldwide.' },
+  { id: 'portal',    name: 'Bean Portal',    icon: '🌀', base: 330000000,bps: 44000, desc: 'Beans from another dimension.' },
+];
+
+// Upgrades, unlocked by conditions. Effect keys:
+//   click: multiply click power      clickBps: clicks gain this fraction of bps
+//   bld + mult: multiply one building   global: multiply all production
+//   goldenRate: golden beans appear more often   frenzyTime: extra frenzy seconds
+//   goldenBonus: multiply golden bean payouts   offline: extra offline earning rate
+const totalOwned = s => Object.values(s.owned).reduce((a, b) => a + b, 0);
+const BUILDING_TIERS = [
+  { n: 1,   word: 'Better',     mult: 2, costX: 10 },
+  { n: 10,  word: 'Elite',      mult: 2, costX: 50 },
+  { n: 25,  word: 'Legendary',  mult: 3, costX: 1000 },
+  { n: 50,  word: 'Mythic',     mult: 3, costX: 50000 },
+  { n: 100, word: 'Cosmic',     mult: 4, costX: 5e6 },
+];
+const UPGRADES = [
+  // Clicking
+  { id: 'c1', icon: '👆', name: 'Stronger Finger', desc: 'Clicks are twice as strong.',     cost: 100,    click: 2, req: s => s.clicks >= 10 },
+  { id: 'c2', icon: '✋', name: 'Both Hands',      desc: 'Clicks are twice as strong.',     cost: 1000,   click: 2, req: s => s.clicks >= 100 },
+  { id: 'c3', icon: '🦾', name: 'Robo Arm',        desc: 'Clicks gain +1% of your beans/sec.', cost: 50000, clickBps: 0.01, req: s => s.clicks >= 300 },
+  { id: 'c4', icon: '💪', name: 'Espresso Shot',   desc: 'Clicks are 3x as strong.',        cost: 500000, click: 3, req: s => s.clicks >= 1000 },
+  { id: 'c5', icon: '🤖', name: 'Robo Hand',       desc: 'Clicks gain +2% of your beans/sec.', cost: 5e6,  clickBps: 0.02, req: s => s.clicks >= 2000 },
+  { id: 'c6', icon: '⚡', name: 'Caffeine Rush',   desc: 'Clicks are 5x as strong.',        cost: 5e7,    click: 5, req: s => s.clicks >= 3500 },
+  { id: 'c7', icon: '🖐️', name: 'Thousand Fingers', desc: 'Clicks gain +5% of your beans/sec.', cost: 1e9, clickBps: 0.05, req: s => s.clicks >= 5000 },
+  { id: 'c8', icon: '👑', name: 'Golden Touch',    desc: 'Clicks are 10x as strong.',       cost: 1e11,   click: 10, req: s => s.clicks >= 10000 },
+
+  // Global production
+  { id: 'g1', icon: '🫘', name: 'Fresh Beans',      desc: 'All production +10%.',  cost: 5000,   global: 1.1, req: s => totalOwned(s) >= 10 },
+  { id: 'g2', icon: '🥛', name: 'Oat Milk',         desc: 'All production +15%.',  cost: 100000, global: 1.15, req: s => totalOwned(s) >= 25 },
+  { id: 'g3', icon: '🍯', name: 'Honey Syrup',      desc: 'All production +20%.',  cost: 2e6,    global: 1.2, req: s => totalOwned(s) >= 50 },
+  { id: 'g4', icon: '🍫', name: 'Mocha Blend',      desc: 'All production +25%.',  cost: 5e7,    global: 1.25, req: s => totalOwned(s) >= 100 },
+  { id: 'g5', icon: '🌍', name: 'Fair Trade',       desc: 'All production +50%.',  cost: 1e9,    global: 1.5, req: s => totalOwned(s) >= 200 },
+  { id: 'g6', icon: '🏆', name: 'World Barista Cup', desc: 'All production doubled.', cost: 1e11, global: 2, req: s => totalOwned(s) >= 350 },
+  { id: 'g7', icon: '✨', name: 'Bean Enlightenment', desc: 'All production tripled.', cost: 1e13, global: 3, req: s => s.allTime >= 1e13 },
+
+  // Golden beans
+  { id: 'l1', icon: '🍀', name: 'Lucky Beans',     desc: 'Golden beans appear twice as often.',  cost: 25000,  goldenRate: 2, req: s => s.goldens >= 1 },
+  { id: 'l2', icon: '⏳', name: 'Slow Pour',        desc: 'Frenzy lasts 15s longer.',             cost: 250000, frenzyTime: 15, req: s => s.goldens >= 3 },
+  { id: 'l3', icon: '💰', name: 'Golden Grounds',  desc: 'Golden bean payouts are doubled.',     cost: 2.5e6,  goldenBonus: 2, req: s => s.goldens >= 5 },
+  { id: 'l4', icon: '🌟', name: 'Four-Leaf Beans', desc: 'Golden beans appear twice as often.',  cost: 5e7,    goldenRate: 2, req: s => s.goldens >= 10 },
+  { id: 'l5', icon: '⌛', name: 'Cold Brew',        desc: 'Frenzy lasts 30s longer.',             cost: 1e9,    frenzyTime: 30, req: s => s.goldens >= 20 },
+
+  // Offline
+  { id: 'o1', icon: '😴', name: 'Night Shift',     desc: 'Earn 75% instead of 50% while away.', cost: 50000, offline: 0.25, req: s => s.allTime >= 20000 },
+  { id: 'o2', icon: '🌙', name: '24/7 Café',       desc: 'Earn 100% while away.',                cost: 5e6,   offline: 0.25, req: s => s.allTime >= 2e6 },
+
+  // Per building
+  ...BUILDINGS.flatMap(b => BUILDING_TIERS.map((t, i) => ({
+    id: b.id + (i + 1), icon: b.icon, name: `${t.word} ${b.name}s`,
+    desc: `${b.name}s are ${t.mult === 2 ? 'twice' : t.mult + 'x'} as efficient.`,
+    cost: b.base * t.costX, bld: b.id, mult: t.mult, req: s => s.owned[b.id] >= t.n,
+  }))),
+];
+
+const SAVE_KEY = 'beanClickerSave';
+let state = freshState();
+
+function freshState() {
+  return { beans: 0, allTime: 0, clicks: 0, goldens: 0, owned: Object.fromEntries(BUILDINGS.map(b => [b.id, 0])), bought: [], frenzyUntil: 0 };
+}
+
+function fmt(n) {
+  if (n < 1000) return n < 10 && n % 1 ? n.toFixed(1) : Math.floor(n).toLocaleString();
+  const units = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx'];
+  let i = 0;
+  while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
+  return n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) + units[i];
+}
+
+const cost = b => Math.ceil(b.base * Math.pow(1.15, state.owned[b.id]));
+const has = id => state.bought.includes(id);
+const frenzy = () => Date.now() < state.frenzyUntil ? 7 : 1;
+
+const boughtWith = key => UPGRADES.filter(u => u[key] && has(u.id));
+const product = key => boughtWith(key).reduce((m, u) => m * u[key], 1);
+const total = key => boughtWith(key).reduce((s, u) => s + u[key], 0);
+
+function buildingMult(id) {
+  return UPGRADES.filter(u => u.bld === id && has(u.id)).reduce((m, u) => m * u.mult, 1);
+}
+function bps() {
+  return BUILDINGS.reduce((sum, b) => sum + state.owned[b.id] * b.bps * buildingMult(b.id), 0) * product('global') * frenzy();
+}
+function perClick() {
+  return (product('click') + bps() * total('clickBps')) * frenzy();
+}
+
+function gain(n) { state.beans += n; state.allTime += n; }
+
+// ---- UI ----
+const $ = id => document.getElementById(id);
+const shop = $('shop'), upgradesEl = $('upgrades');
+
+function renderShop() {
+  shop.innerHTML = '';
+  BUILDINGS.forEach((b, i) => {
+    // Reveal buildings progressively
+    if (i > 0 && state.owned[BUILDINGS[i - 1].id] === 0 && state.allTime < b.base) return;
+    const el = document.createElement('button');
+    el.className = 'item';
+    el.id = 'b-' + b.id;
+    el.innerHTML = `<span class="icon">${b.icon}</span>
+      <span><div class="name">${b.name}</div>
+      <div class="desc">${b.desc} (${fmt(b.bps * buildingMult(b.id))}/s each)</div>
+      <div class="cost"></div></span>
+      <span class="owned"></span>`;
+    el.onclick = () => {
+      const c = cost(b);
+      if (state.beans >= c) { state.beans -= c; state.owned[b.id]++; renderShop(); update(); }
+    };
+    shop.appendChild(el);
+  });
+  update();
+}
+
+function upgradeRow(u, owned) {
+  const el = document.createElement('button');
+  el.className = 'item' + (owned ? ' bought' : '');
+  el.innerHTML = `<span class="icon">${u.icon}</span>
+    <span><div class="name">${u.name}</div>
+    <div class="desc">${u.desc}</div>
+    <div class="cost">${owned ? 'Owned' : fmt(u.cost)}</div></span>
+    <span></span>`;
+  return el;
+}
+
+function renderUpgrades() {
+  upgradesEl.innerHTML = '';
+  const avail = UPGRADES.filter(u => !has(u.id) && u.req(state)).sort((a, b) => a.cost - b.cost);
+  if (!avail.length) upgradesEl.innerHTML = '<div class="empty">No upgrades right now. Keep clicking and building to unlock more.</div>';
+  avail.forEach(u => {
+    const el = upgradeRow(u, false);
+    el.id = 'u-' + u.id;
+    el.onclick = () => {
+      if (state.beans >= u.cost) {
+        state.beans -= u.cost; state.bought.push(u.id);
+        toast(`Bought ${u.name}!`); renderUpgrades(); renderShop();
+      }
+    };
+    upgradesEl.appendChild(el);
+  });
+  renderOwned();
+}
+
+function renderOwned() {
+  const list = $('ownedList');
+  list.innerHTML = '';
+  const mine = UPGRADES.filter(u => has(u.id));
+  const locked = UPGRADES.length - mine.length;
+  if (!mine.length) list.innerHTML = '<div class="empty">You haven\'t bought any upgrades yet.</div>';
+  mine.forEach(u => { const el = upgradeRow(u, true); el.disabled = true; list.appendChild(el); });
+  const note = document.createElement('div');
+  note.className = 'empty';
+  note.textContent = `${mine.length} of ${UPGRADES.length} upgrades owned · ${locked} left to find`;
+  list.appendChild(note);
+}
+
+function setBadge(id, n) {
+  const b = $(id); b.hidden = n === 0; b.textContent = n;
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', on);
+      $('pane-' + t.dataset.tab).hidden = !on;
+    });
+    try { localStorage.setItem(SAVE_KEY + ':tab', tab.dataset.tab); } catch {}
+  };
+});
+
+let lastUpgradeKey = '';
+function update() {
+  $('count').textContent = `${fmt(state.beans)} beans`;
+  const f = frenzy() > 1 ? ' — ☀️ FRENZY x7!' : '';
+  $('rate').textContent = `${fmt(bps())} per second${f}`;
+  $('perClick').textContent = fmt(perClick());
+  $('clicks').textContent = state.clicks.toLocaleString();
+  $('allTime').textContent = fmt(state.allTime);
+  document.title = `${fmt(state.beans)} beans · Bean Clicker`;
+
+  BUILDINGS.forEach(b => {
+    const el = $('b-' + b.id);
+    if (!el) return;
+    const c = cost(b);
+    el.disabled = state.beans < c;
+    el.querySelector('.cost').textContent = fmt(c);
+    el.querySelector('.owned').textContent = state.owned[b.id];
+  });
+  UPGRADES.forEach(u => { const el = $('u-' + u.id); if (el) el.disabled = state.beans < u.cost; });
+  setBadge('badge-buildings', shop.querySelectorAll('.item:not(:disabled)').length);
+  setBadge('badge-upgrades', upgradesEl.querySelectorAll('.item:not(:disabled)').length);
+
+  // Re-render when new things unlock
+  const key = UPGRADES.filter(u => !has(u.id) && u.req(state)).map(u => u.id).join();
+  if (key !== lastUpgradeKey) { lastUpgradeKey = key; renderUpgrades(); }
+  const visible = shop.children.length;
+  const shouldShow = BUILDINGS.filter((b, i) => i === 0 || state.owned[BUILDINGS[i - 1].id] > 0 || state.allTime >= b.base).length;
+  if (visible !== shouldShow) renderShop();
+}
+
+$('bean').addEventListener('click', e => {
+  const n = perClick();
+  gain(n); state.clicks++;
+  const area = $('beanArea').getBoundingClientRect();
+  const pop = document.createElement('div');
+  pop.className = 'pop';
+  pop.textContent = '+' + fmt(n);
+  const x = e.clientX ? e.clientX - area.left : area.width / 2;
+  const y = e.clientY ? e.clientY - area.top : area.height / 2;
+  pop.style.left = (x - 15) + 'px';
+  pop.style.top = (y - 20) + 'px';
+  $('beanArea').appendChild(pop);
+  setTimeout(() => pop.remove(), 900);
+  update();
+});
+
+// Golden bean: random bonus
+function spawnGolden() {
+  const g = document.createElement('button');
+  g.className = 'golden';
+  g.setAttribute('aria-label', 'Golden bean bonus');
+  g.style.left = (20 + Math.random() * (innerWidth - 100)) + 'px';
+  g.style.top = (20 + Math.random() * (innerHeight - 100)) + 'px';
+  g.onclick = () => {
+    g.remove();
+    state.goldens++;
+    if (Math.random() < 0.5) {
+      const bonus = Math.max(50, bps() * 60, state.beans * 0.1) * product('goldenBonus');
+      gain(bonus); toast(`Golden bean! +${fmt(bonus)} beans`);
+    } else {
+      const secs = 30 + total('frenzyTime');
+      state.frenzyUntil = Date.now() + secs * 1000; toast(`Golden bean! Frenzy: x7 for ${secs}s`);
+    }
+    update();
+  };
+  document.body.appendChild(g);
+  setTimeout(() => g.remove(), 12000);
+  setTimeout(spawnGolden, (60000 + Math.random() * 120000) / product('goldenRate'));
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ---- Save / load ----
+function save(quiet) {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, savedAt: Date.now() })); if (!quiet) toast('Game saved'); }
+  catch { if (!quiet) toast('Saving is unavailable in this browser'); }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    state = { ...freshState(), ...s, owned: { ...freshState().owned, ...s.owned } };
+    // Offline earnings at 50% rate (more with upgrades), capped to 8 hours
+    const secs = Math.min((Date.now() - (s.savedAt || Date.now())) / 1000, 8 * 3600);
+    const earned = bps() * secs * (0.5 + total('offline'));
+    if (earned >= 1) { gain(earned); setTimeout(() => toast(`While you were away: +${fmt(earned)} beans`), 300); }
+  } catch {}
+}
+$('saveBtn').onclick = () => save(false);
+$('resetBtn').onclick = () => {
+  if (confirm('Reset all progress? This cannot be undone.')) {
+    state = freshState(); try { localStorage.removeItem(SAVE_KEY); } catch {}
+    lastUpgradeKey = ''; renderShop(); renderUpgrades(); toast('Progress reset');
+  }
+};
+
+// ---- Loop ----
+load();
+renderShop();
+renderUpgrades();
+try { const t = localStorage.getItem(SAVE_KEY + ':tab'); if (t) $('tab-' + t)?.click(); } catch {}
+let last = performance.now();
+function tick(now) {
+  gain(bps() * (now - last) / 1000);
+  last = now;
+  update();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+setInterval(() => save(true), 10000);
+addEventListener('beforeunload', () => save(true));
+setTimeout(spawnGolden, (30000 + Math.random() * 60000) / product('goldenRate'));
+</script>
+</body>
+</html>
